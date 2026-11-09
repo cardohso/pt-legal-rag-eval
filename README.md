@@ -1,5 +1,7 @@
 # pt-legal-rag-eval
 
+[![CI](https://github.com/cardohso/pt-legal-rag-eval/actions/workflows/ci.yml/badge.svg)](https://github.com/cardohso/pt-legal-rag-eval/actions/workflows/ci.yml)
+
 Independent evaluation of small open models for RAG over Portuguese labour law: which one answers
 most faithfully, cites correctly and refuses when it should, given the same retrieved text?
 
