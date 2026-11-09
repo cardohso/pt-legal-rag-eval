@@ -30,3 +30,6 @@ data/raw/
 
 # macOS
 .DS_Store
+
+# parsed chunks contain the law text: local only until the reuse terms are settled
+data/chunks.jsonl
