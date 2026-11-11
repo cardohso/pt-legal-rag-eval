@@ -33,3 +33,6 @@ data/raw/
 
 # parsed chunks contain the law text: local only until the reuse terms are settled
 data/chunks.jsonl
+
+# review page embeds the law text and your decisions: local only
+review/

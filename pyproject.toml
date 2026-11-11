@@ -41,6 +41,9 @@ select = ["E", "F", "I", "B", "UP", "SIM"]
 [tool.ruff.lint.per-file-ignores]
 # the fixture imitates long lines of the real page
 "tests/test_ingest.py" = ["E501"]
+# embedded JavaScript, CSS and HTML read better unwrapped
+"src/ptlegal_eval/review.py" = ["E501"]
+"tests/test_review.py" = ["E501"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
