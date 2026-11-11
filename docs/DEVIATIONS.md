@@ -12,7 +12,8 @@ must be reported in the "Deviations" section of `REPORT.md`.
   (105 items, `g046` to `g150`) "draft them all and approve them all". None of these 140 items was
   read by João. Each carries `metadata.review_comment` saying so; `metadata.reviewed_by` records
   who approved, not that they read the item.
-- **Effect on the study:** only 10 of 150 items (7 %) have had a human check. The other 140 may have a
+- **Effect on the study:** only 25 of 150 items (17 %) have had a human check (10 read in full, 15
+  from a random spot check, see below). The other 125 may have a
   wrong gold article, a wrong reference answer, an ambiguous question, or an "unanswerable" item that
   a reasonable reader would consider answerable. An error scores against every model equally, so it
   adds noise to all comparisons rather than favouring one model, but it could go unnoticed and it
@@ -32,8 +33,17 @@ must be reported in the "Deviations" section of `REPORT.md`.
   arguably answerable.
 - **Items flagged by the drafter as arguable:** `g033` (public-sector holidays: other legislation may
   apply parts of the Código to public workers).
-- **Mitigation, if any:** none yet. An item-by-item review, or a random spot check of about 15 items,
-  would reduce the risk. Record the result here, with the number of errors found.
+- **Spot check (2026-11-11):** before the freeze, 15 of the 140 bulk-approved items were drawn at
+  random, stratified (3 per category), with seed 20261111, and committed before review
+  (`data/golden/spotcheck_sample.jsonl`, commit `09431eb`). João reviewed each against its gold
+  article text and accepted all 15 unchanged, with no comments: 0 errors found in 15. This does not
+  show the set is error-free: the exact (Clopper-Pearson) 95 % upper bound on the error rate is
+  21.8 %, so up to about 1 item in 5 of the unread items could still be wrong. Each spot-checked item
+  carries `metadata.spot_checked`. The other 125 items remain unread.
+- **Not covered by the sample:** `g033` (flagged by the drafter as arguable) was not drawn and has not
+  been read.
+- **Report wording:** say "no errors in a random sample of 15 of the 140 unread items", not "no
+  errors".
 
 ## 2. Dates in earlier records (2026-11-11)
 
