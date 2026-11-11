@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import copy
+import hashlib
 import json
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
@@ -91,6 +92,11 @@ function nextPending(items, decisions, from) {
   }
   return -1;
 }
+function exportable(items, decisions) {
+  const out = {};
+  for (const it of items) if (isDecided(decisions[it.id])) out[it.id] = decisions[it.id];
+  return out;
+}
 function pick(x, fallback) { return (typeof x === 'string' && x.trim()) ? x.trim() : fallback; }
 function effective(item, d) {
   return {
@@ -105,7 +111,7 @@ APP_JS = """
 (function () {
   const DATA = JSON.parse(document.getElementById('data').textContent);
   const items = DATA.items;
-  const KEY = 'ptlegal-review-v1';
+  const KEY = DATA.key;
   const $ = (id) => document.getElementById(id);
   let storageOk = true;
   let decisions = {};
@@ -167,7 +173,7 @@ APP_JS = """
   }
   function go(delta) { cur = (cur + delta + items.length) % items.length; render(); }
   function download() {
-    const body = JSON.stringify({ exported_at: new Date().toISOString(), decisions: decisions }, null, 2);
+    const body = JSON.stringify({ exported_at: new Date().toISOString(), decisions: exportable(items, decisions) }, null, 2);
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([body], { type: 'application/json' }));
     a.download = 'review_decisions.json';
@@ -277,7 +283,11 @@ def render_review_page(items: Sequence[Mapping[str, Any]], chunks: Sequence[Chun
             for g in gold_ids
         ]
         payload.append({**it, "gold": gold})
-    data = json.dumps({"items": payload}, ensure_ascii=False).replace("</", "<\\/")
+    key = (
+        "ptlegal-review-"
+        + hashlib.sha1("|".join(i["id"] for i in payload).encode()).hexdigest()[:10]
+    )
+    data = json.dumps({"key": key, "items": payload}, ensure_ascii=False).replace("</", "<\\/")
     return PAGE.replace("__DATA__", data).replace("__CORE__", CORE_JS).replace("__APP__", APP_JS)
 
 

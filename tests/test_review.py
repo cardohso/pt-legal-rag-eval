@@ -1,4 +1,5 @@
 import json
+import re
 import shutil
 import subprocess
 
@@ -159,3 +160,26 @@ def test_cli_build_then_apply_round_trip(tmp_path) -> None:
     kept = [json.loads(x) for x in reviewed.read_text(encoding="utf-8").splitlines()]
     assert [k["id"] for k in kept] == ["g001", "g003", "g004"]
     assert kept[0]["metadata"]["reviewed_by"] == "João" and kept[1]["metadata"]["reviewed"] is False
+
+
+def test_storage_key_differs_between_item_sets() -> None:
+    def key(items):
+        page = render_review_page(items, CHUNKS)
+        return re.search(r'"key": "([^"]+)"', page).group(1)
+
+    assert key([make(1), make(2)]) != key([make(3), make(4)])
+    assert key([make(1), make(2)]) == key([make(1), make(2)])
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="node not installed")
+def test_export_only_contains_decisions_for_items_on_the_page() -> None:
+    script = (
+        CORE_JS
+        + """
+const items = [{id:'a'},{id:'b'}];
+const d = {a:{status:'accept'}, b:{status:'maybe'}, zzz:{status:'accept'}};
+console.log(JSON.stringify(exportable(items, d)));
+"""
+    )
+    out = subprocess.run(["node", "-e", script], capture_output=True, text=True, check=True).stdout
+    assert json.loads(out) == {"a": {"status": "accept"}}
