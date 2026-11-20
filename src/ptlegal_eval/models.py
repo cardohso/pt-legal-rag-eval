@@ -68,6 +68,7 @@ class GenerationResult:
     n_input_tokens: int
     n_new_tokens: int
     finish: str  # "stop", or "length" when the token limit cut the answer short
+    first_token_ids: tuple[int, ...] = ()  # the first generated ids, to diagnose empty output
 
 
 def clean_output(text: str) -> str:
@@ -128,6 +129,7 @@ def load_model(spec: ModelSpec, max_memory_gib: int = 13) -> LoadedModel:
         except Exception as e:  # try the next class, keep the reason
             errors.append(f"{name}: {type(e).__name__}: {str(e)[:300]}")
             gc.collect()
+            torch.cuda.empty_cache()
             continue
         model.eval()
         return LoadedModel(
@@ -154,12 +156,16 @@ def make_generate(
     import torch
 
     cfg = cfg or GenerationConfig()
-
-    model, spec = loaded.model, loaded.spec
-    eos = model.generation_config.eos_token_id or model.config.eos_token_id
-    eos_ids = set(eos if isinstance(eos, list) else [eos]) if eos is not None else set()
+    spec = loaded.spec
 
     def generate(messages: list[dict[str, str]]) -> GenerationResult:
+        model = (
+            loaded.model
+        )  # looked up per call, so nothing here keeps the model alive after unload
+        if model is None:
+            raise RuntimeError("the model has been unloaded")
+        eos = model.generation_config.eos_token_id or model.config.eos_token_id
+        eos_ids = set(eos if isinstance(eos, list) else [eos]) if eos is not None else set()
         inputs = loaded.templater.apply_chat_template(
             messages,
             tokenize=True,
@@ -181,7 +187,8 @@ def make_generate(
         new = out[0][n_in:]
         stopped = len(new) < cfg.max_new_tokens or (len(new) > 0 and int(new[-1]) in eos_ids)
         text = loaded.tokenizer.decode(new, skip_special_tokens=True)
-        return GenerationResult(text, n_in, int(len(new)), "stop" if stopped else "length")
+        head = tuple(int(i) for i in new[:16].tolist())
+        return GenerationResult(text, n_in, int(len(new)), "stop" if stopped else "length", head)
 
     return generate
 
@@ -202,16 +209,52 @@ def reset_gpu_peaks() -> None:
         torch.cuda.reset_peak_memory_stats(i)
 
 
-def unload(loaded: LoadedModel) -> None:
-    """Free GPU memory and delete the model's files from the Hugging Face cache (disk is scarce)."""
+def sanity_check(loaded: LoadedModel) -> dict[str, Any]:
+    """One forward pass: are the logits finite, and what does the model want to say first?
+
+    FP16 can overflow in models trained in bfloat16; non-finite logits show up as empty output.
+    """
+    import torch
+
+    try:
+        inputs = loaded.templater.apply_chat_template(
+            [{"role": "user", "content": "Olá"}],
+            tokenize=True,
+            return_dict=True,
+            return_tensors="pt",
+            add_generation_prompt=True,
+            **loaded.spec.template_kwargs,
+        ).to(loaded.model.device)
+        with torch.inference_mode():
+            logits = loaded.model(**inputs).logits[0, -1].float()
+        finite = bool(torch.isfinite(logits).all())
+        top = torch.topk(logits, 5).indices.tolist() if finite else []
+        return {
+            "finite_logits": finite,
+            "top5": [loaded.tokenizer.decode([i]) for i in top],
+            "dtype": str(loaded.model.dtype),
+        }
+    except Exception as e:
+        return {"error": f"{type(e).__name__}: {str(e)[:200]}"}
+
+
+def unload(loaded: LoadedModel) -> dict[str, float]:
+    """Free GPU memory, delete the model's files from the Hugging Face cache (disk is scarce), and
+    report the GPU memory still allocated, which should be about zero."""
     import torch
 
     spec = loaded.spec
-    del loaded.model
-    gc.collect()
-    torch.cuda.empty_cache()
+    loaded.model = None
+    for _ in range(2):
+        gc.collect()
+        if torch.cuda.is_available():
+            torch.cuda.synchronize()
+        torch.cuda.empty_cache()
     from huggingface_hub.constants import HF_HUB_CACHE
 
-    shutil.rmtree(
-        Path(HF_HUB_CACHE) / f"models--{spec.hf_id.replace('/', '--')}", ignore_errors=True
-    )
+    cache = Path(HF_HUB_CACHE) / f"models--{spec.hf_id.replace('/', '--')}"
+    shutil.rmtree(cache, ignore_errors=True)
+    return {
+        f"cuda:{i}": round(torch.cuda.memory_allocated(i) / 2**30, 2)
+        for i in range(torch.cuda.device_count())
+    }

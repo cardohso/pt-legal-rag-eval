@@ -35,7 +35,7 @@ class Backend:
     render: Callable[[list[dict[str, str]]], str]
     info: dict[str, Any]
     peaks: Callable[[], dict[str, float]]
-    close: Callable[[], None]
+    close: Callable[[], dict[str, float] | None]
 
 
 def real_backend(spec: ModelSpec) -> Backend:
@@ -46,13 +46,15 @@ def real_backend(spec: ModelSpec) -> Backend:
     m.reset_gpu_peaks()
     start = time.perf_counter()
     loaded = m.load_model(spec)
+    load_seconds = round(time.perf_counter() - start, 1)
     return Backend(
         generate=m.make_generate(loaded),
         render=lambda messages: m.render_prompt(loaded, messages),
         info={
             "loader_used": loaded.loader_used,
-            "load_seconds": round(time.perf_counter() - start, 1),
+            "load_seconds": load_seconds,
             "load_errors": loaded.load_errors,
+            "sanity": m.sanity_check(loaded),
         },
         peaks=m.gpu_peaks_gib,
         close=lambda: m.unload(loaded),
@@ -174,7 +176,9 @@ def run_smoke(
             ]
             meta["models"][key] = {**backend.info, "peak_gib": backend.peaks(), **_stats(recs)}
         finally:
-            backend.close()
+            after = backend.close()
+        if after is not None and key in meta["models"]:
+            meta["models"][key]["allocated_after_unload_gib"] = after
         meta_path.write_text(json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")
     meta_path.write_text(json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")
     return meta
@@ -199,6 +203,12 @@ def format_report(out_dir: Path) -> str:
             f"   valid {m['valid']}/5, errors {m['errors']}, truncated {m['truncated']}, "
             f"{m['tokens_per_s']} tok/s, longest prompt {m['max_input_tokens']} tokens",
         ]
+        if "sanity" in m:
+            lines.append(f"   sanity: {m['sanity']}")
+        left = m.get("allocated_after_unload_gib")
+        if left is not None:
+            leak = "  <-- LEAK: memory was not freed" if any(v > 1.0 for v in left.values()) else ""
+            lines.append(f"   GPU memory still allocated after unload (GiB): {left}{leak}")
         recs = [
             r
             for k, r in read_predictions(out_dir / f"{key}.jsonl").items()
@@ -207,6 +217,10 @@ def format_report(out_dir: Path) -> str:
         cats = {i["id"]: i["category"] for i in meta["items"]}
         for r in sorted(recs, key=lambda r: r["item_id"]):
             answer = (r["answer"] or r["error"] or "").replace("\n", " ")[:170]
+            if not answer and r["answer_raw"] is not None:
+                answer = (
+                    f"<empty> raw={r['answer_raw'][:60]!r} first ids={r['first_token_ids'][:8]}"
+                )
             tokens = f"{r['n_input_tokens']}->{r['n_new_tokens']}"
             category = cats.get(r["item_id"], "?")
             lines.append(f"   {r['item_id']} {category:<15} {tokens} {r['finish']} | {answer}")

@@ -84,6 +84,7 @@ def run_items(
                     "n_input_tokens": None,
                     "n_new_tokens": None,
                     "finish": None,
+                    "first_token_ids": [],
                     "error": f"{type(e).__name__}: {e}",
                     "valid": False,
                 }
@@ -96,6 +97,7 @@ def run_items(
                     "n_input_tokens": result.n_input_tokens,
                     "n_new_tokens": result.n_new_tokens,
                     "finish": result.finish,
+                    "first_token_ids": list(result.first_token_ids),
                     "error": None,
                     "valid": bool(answer) and result.finish == "stop",
                 }

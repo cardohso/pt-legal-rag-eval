@@ -111,3 +111,30 @@ def test_report_summarises_every_model_in_plain_text(tmp_path) -> None:
     text = format_report(tmp_path)
     assert "amalia" in text and "gemma" in text and "causal_lm" in text and "12.0" in text
     assert "Resposta (art. 1.º)." in text
+
+
+def test_memory_left_after_unloading_is_recorded_so_a_leak_is_visible(tmp_path) -> None:
+    def factory(spec):
+        b = fake_backend(spec)
+        return Backend(
+            b.generate, b.render, b.info, b.peaks, lambda: {"cuda:0": 8.5, "cuda:1": 8.5}
+        )
+
+    meta = run_smoke(["amalia"], CHUNKS, dev_items(), tmp_path, factory, log=lambda s: None)
+    assert meta["models"]["amalia"]["allocated_after_unload_gib"] == {"cuda:0": 8.5, "cuda:1": 8.5}
+    assert "LEAK" in format_report(tmp_path)
+
+
+def test_report_shows_why_an_answer_is_empty_and_any_sanity_check(tmp_path) -> None:
+    def factory(spec):
+        b = fake_backend(spec)
+        info = {**b.info, "sanity": {"finite_logits": False, "top5": ["<pad>"]}}
+
+        def generate(messages):
+            return GenerationResult("", 50, 400, "length", first_token_ids=(0, 0, 0))
+
+        return Backend(generate, b.render, info, b.peaks, b.close)
+
+    run_smoke(["amalia"], CHUNKS, dev_items(), tmp_path, factory, log=lambda s: None)
+    text = format_report(tmp_path)
+    assert "finite_logits" in text and "empty" in text and "[0, 0, 0]" in text

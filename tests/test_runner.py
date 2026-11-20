@@ -139,3 +139,18 @@ def test_progress_is_logged(tmp_path) -> None:
     logged = []
     run(tmp_path / "p.jsonl", log=logged.append)
     assert len(logged) >= 3
+
+
+def test_records_keep_the_first_generated_token_ids_for_diagnosis(tmp_path) -> None:
+    out = tmp_path / "p.jsonl"
+    results = iter(
+        [
+            GenerationResult("", 10, 400, "length", first_token_ids=(0, 0, 0)),
+            GenerationResult("Ok.", 10, 3, "stop", first_token_ids=(5, 6, 4)),
+            GenerationResult("Ok.", 10, 3, "stop"),
+        ]
+    )
+    run(out, lambda m: next(results))
+    recs = lines(out)
+    assert recs[0]["first_token_ids"] == [0, 0, 0] and recs[1]["first_token_ids"] == [5, 6, 4]
+    assert recs[2]["first_token_ids"] == []
