@@ -47,3 +47,14 @@ def test_format_names_the_first_bad_module_and_compares_dtypes(tmp_path) -> None
 def test_format_shows_errors_plainly() -> None:
     text = format_probe({"gemma": {"bfloat16": {"error": "RuntimeError: boom"}}})
     assert "boom" in text
+
+
+def test_an_error_keeps_the_traceback_tail_so_its_origin_is_visible(tmp_path) -> None:
+    def explodes(spec, dtype):
+        raise RuntimeError("Invalid device argument")
+
+    out = run_probe(["amalia"], ["float16"], tmp_path, explodes, log=lambda s: None)
+    err = out["amalia"]["float16"]
+    assert "Invalid device argument" in err["error"]
+    assert "explodes" in err["traceback_tail"]
+    assert "explodes" in format_probe(out)

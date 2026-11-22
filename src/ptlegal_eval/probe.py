@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import traceback
 from collections.abc import Callable, Sequence
 from pathlib import Path
 from typing import Any
@@ -32,7 +33,11 @@ def run_probe(
             try:
                 results[key][dtype] = probe_fn(MODELS[key], dtype)
             except Exception as e:
-                results[key][dtype] = {"error": f"{type(e).__name__}: {str(e)[:300]}"}
+                tail = "".join(traceback.format_exc().splitlines(keepends=True)[-12:])
+                results[key][dtype] = {
+                    "error": f"{type(e).__name__}: {str(e)[:300]}",
+                    "traceback_tail": tail,
+                }
             (out_dir / "probe.json").write_text(
                 json.dumps(results, ensure_ascii=False, indent=2), encoding="utf-8"
             )
@@ -44,7 +49,10 @@ def format_probe(results: dict[str, dict[str, Any]]) -> str:
     for key, by_dtype in results.items():
         for dtype, r in by_dtype.items():
             if "error" in r:
-                lines += [f"## {key} {dtype}: FAILED", f"   {r['error']}", ""]
+                lines += [f"## {key} {dtype}: FAILED", f"   {r['error']}"]
+                if r.get("traceback_tail"):
+                    lines += ["   --- where:", r["traceback_tail"].rstrip()]
+                lines.append("")
                 continue
             lines.append(f"## {key} {dtype}: loader {r['loader_used']}, load {r['load_seconds']} s")
             lines.append(f"   sanity: {r['sanity']}")
