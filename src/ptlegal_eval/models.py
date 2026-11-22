@@ -94,7 +94,7 @@ class LoadedModel:
     load_errors: list[str]
 
 
-def load_model(spec: ModelSpec, max_memory_gib: int = 13) -> LoadedModel:
+def load_model(spec: ModelSpec, max_memory_gib: int = 13, dtype: str = "float16") -> LoadedModel:
     import torch
     import transformers
 
@@ -112,7 +112,7 @@ def load_model(spec: ModelSpec, max_memory_gib: int = 13) -> LoadedModel:
     )
     gpus = torch.cuda.device_count()
     kwargs: dict[str, Any] = {
-        "dtype": torch.float16,
+        "dtype": getattr(torch, dtype),
         "device_map": "auto",
         "revision": spec.revision,
     }
@@ -258,3 +258,89 @@ def unload(loaded: LoadedModel) -> dict[str, float]:
         f"cuda:{i}": round(torch.cuda.memory_allocated(i) / 2**30, 2)
         for i in range(torch.cuda.device_count())
     }
+
+
+def layer_report(loaded: LoadedModel) -> dict[str, Any]:
+    """Where do activations get large, and where do they first stop being finite?
+
+    One forward pass with hooks on the embeddings, every decoder layer and its attention and MLP
+    blocks. The first non-finite module in execution order is where the overflow starts; the largest
+    magnitudes show how close the other layers come to the FP16 limit (65504).
+    """
+    import re
+
+    import torch
+
+    stats: list[dict[str, Any]] = []
+    hooks = []
+    wanted = re.compile(r"(\.layers\.\d+(\.mlp|\.self_attn)?|embed_tokens)$")
+
+    def make_hook(name: str) -> Callable[..., None]:
+        def hook(module: Any, args: Any, output: Any) -> None:
+            out = output[0] if isinstance(output, (tuple, list)) else output
+            if torch.is_tensor(out):
+                f = out.float()
+                finite = bool(torch.isfinite(f).all())
+                top = float(f.abs().nan_to_num(posinf=3.0e38).max())
+                stats.append({"module": name, "max_abs": round(top, 1), "finite": finite})
+
+        return hook
+
+    try:
+        inputs = loaded.templater.apply_chat_template(
+            [{"role": "user", "content": "Olá"}],
+            tokenize=True,
+            return_dict=True,
+            return_tensors="pt",
+            add_generation_prompt=True,
+            **loaded.spec.template_kwargs,
+        ).to(loaded.model.device)
+        for name, mod in loaded.model.named_modules():
+            if wanted.search(name) or name.endswith(".norm"):
+                hooks.append(mod.register_forward_hook(make_hook(name)))
+        with torch.inference_mode():
+            loaded.model(**inputs)
+    except Exception as e:
+        return {"error": f"{type(e).__name__}: {str(e)[:200]}", "partial": stats[:5]}
+    finally:
+        for h in hooks:
+            h.remove()
+    bad = next((s["module"] for s in stats if not s["finite"]), None)
+    largest = sorted(stats, key=lambda s: -s["max_abs"])[:6]
+    return {"first_non_finite": bad, "largest_activations": largest, "modules_seen": len(stats)}
+
+
+def probe_dtype(spec: ModelSpec, dtype: str) -> dict[str, Any]:
+    """Load `spec` in `dtype`, check it is numerically sane, and time a short generation."""
+    from ptlegal_eval.prompts import build_messages
+
+    reset_gpu_peaks()
+    loaded = load_model(spec, dtype=dtype)
+    res: dict[str, Any] = {}
+    try:
+        res = {
+            "dtype": dtype,
+            "loader_used": loaded.loader_used,
+            "load_seconds": round(loaded.load_seconds, 1),
+            "sanity": sanity_check(loaded),
+            "layer_report": layer_report(loaded),
+        }
+        question = "Quantos dias úteis de férias tem, no mínimo, um trabalhador?"
+        messages = build_messages(question, None)
+        try:
+            make_generate(loaded, GenerationConfig(max_new_tokens=1))(messages)  # warm-up
+            start = time.perf_counter()
+            r = make_generate(loaded, GenerationConfig(max_new_tokens=60))(messages)
+            elapsed = time.perf_counter() - start
+            res |= {
+                "tokens_per_s": round(r.n_new_tokens / elapsed, 2),
+                "n_new_tokens": r.n_new_tokens,
+                "first_token_ids": list(r.first_token_ids[:8]),
+                "sample": r.text[:200],
+            }
+        except Exception as e:
+            res["generation_error"] = f"{type(e).__name__}: {str(e)[:200]}"
+        res["peak_gib"] = gpu_peaks_gib()
+    finally:
+        res["allocated_after_unload_gib"] = unload(loaded)
+    return res

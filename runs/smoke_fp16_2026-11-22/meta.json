@@ -1,0 +1,178 @@
+{
+  "prompt_version": "v0",
+  "condition": "A",
+  "max_new_tokens": 400,
+  "env": {
+    "python": "3.13.16",
+    "created": "2026-11-22T19:02:13+00:00",
+    "torch": "2.11.0+cu130",
+    "transformers": "5.24.0",
+    "accelerate": "1.16.0",
+    "git_sha": "f5ef6d3f5804d79c103ba2b88ea15b5be660bbce",
+    "gpus": [
+      "Tesla T4",
+      "Tesla T4"
+    ]
+  },
+  "items": [
+    {
+      "id": "g002",
+      "category": "single_article",
+      "context": "gold",
+      "context_ids": [
+        "CT-238"
+      ]
+    },
+    {
+      "id": "g020",
+      "category": "multi_article",
+      "context": "gold",
+      "context_ids": [
+        "CT-328",
+        "CT-329"
+      ]
+    },
+    {
+      "id": "g028",
+      "category": "numeric",
+      "context": "gold",
+      "context_ids": [
+        "CT-211"
+      ]
+    },
+    {
+      "id": "g008",
+      "category": "unanswerable",
+      "context": "bm25_smoke_only",
+      "context_ids": [
+        "CT-305",
+        "CT-274",
+        "CT-366"
+      ]
+    },
+    {
+      "id": "g009",
+      "category": "false_premise",
+      "context": "gold",
+      "context_ids": [
+        "CT-203"
+      ]
+    }
+  ],
+  "models": {
+    "amalia": {
+      "loader_used": "causal_lm",
+      "load_seconds": 143.8,
+      "load_errors": [],
+      "sanity": {
+        "finite_logits": false,
+        "top5": [],
+        "dtype": "torch.float16"
+      },
+      "peak_gib": {
+        "cuda:0": 9.74,
+        "cuda:1": 9.73
+      },
+      "valid": 0,
+      "errors": 0,
+      "truncated": 5,
+      "tokens_per_s": 9.92,
+      "max_input_tokens": 1646,
+      "total_seconds": 201.6,
+      "allocated_after_unload_gib": {
+        "cuda:0": 0.01,
+        "cuda:1": 0.01
+      }
+    },
+    "eurollm": {
+      "loader_used": "causal_lm",
+      "load_seconds": 148.1,
+      "load_errors": [],
+      "sanity": {
+        "finite_logits": true,
+        "top5": [
+          "O",
+          "¡",
+          "B",
+          "Ol",
+          "**"
+        ],
+        "dtype": "torch.float16"
+      },
+      "peak_gib": {
+        "cuda:0": 9.73,
+        "cuda:1": 9.73
+      },
+      "valid": 5,
+      "errors": 0,
+      "truncated": 0,
+      "tokens_per_s": 9.39,
+      "max_input_tokens": 1646,
+      "total_seconds": 58.1,
+      "allocated_after_unload_gib": {
+        "cuda:0": 0.01,
+        "cuda:1": 0.01
+      }
+    },
+    "gemma": {
+      "loader_used": "multimodal_lm",
+      "load_seconds": 211.9,
+      "load_errors": [],
+      "sanity": {
+        "finite_logits": true,
+        "top5": [
+          "Olá",
+          "สวัสดี",
+          "<|channel>",
+          "こんにちは",
+          "Ol"
+        ],
+        "dtype": "torch.float16"
+      },
+      "peak_gib": {
+        "cuda:0": 13.03,
+        "cuda:1": 10.38
+      },
+      "valid": 5,
+      "errors": 0,
+      "truncated": 0,
+      "tokens_per_s": 6.62,
+      "max_input_tokens": 1637,
+      "total_seconds": 44.6,
+      "allocated_after_unload_gib": {
+        "cuda:0": 0.01,
+        "cuda:1": 0.01
+      }
+    },
+    "qwen": {
+      "loader_used": "multimodal_lm",
+      "load_seconds": 170.6,
+      "load_errors": [],
+      "sanity": {
+        "finite_logits": true,
+        "top5": [
+          "Ol",
+          "Hello",
+          "Oi",
+          "O",
+          "ol"
+        ],
+        "dtype": "torch.float16"
+      },
+      "peak_gib": {
+        "cuda:0": 10.2,
+        "cuda:1": 9.36
+      },
+      "valid": 5,
+      "errors": 0,
+      "truncated": 0,
+      "tokens_per_s": 9.92,
+      "max_input_tokens": 1619,
+      "total_seconds": 39.1,
+      "allocated_after_unload_gib": {
+        "cuda:0": 0.01,
+        "cuda:1": 0.01
+      }
+    }
+  }
+}

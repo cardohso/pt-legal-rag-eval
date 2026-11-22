@@ -36,3 +36,6 @@ data/chunks.jsonl
 
 # review page embeds the law text and your decisions: local only
 review/
+
+# rendered prompts contain the law text (the gold articles): local only
+*_rendered_prompts.json

@@ -49,3 +49,20 @@ must be reported in the "Deviations" section of `REPORT.md`.
 
 The batch 2 approval comments and this file first said 2026-11-12. The correct date is 2026-11-11;
 all records were corrected before any further commit.
+
+## 3. FP16 breaks AMALIA: the "FP16 for every model" policy is under review (opened 2026-11-22)
+
+- **Pre-registration (section 3):** all four models on Kaggle T4 x2 in FP16, no quantisation.
+- **What happened:** in the step 6 smoke test (`runs/smoke_fp16_2026-11-22/`, commit `f5ef6d3`) AMALIA
+  produced non-finite logits in FP16 (`finite_logits: False`); every generated token id was 0 and all
+  5 answers were empty. EuroLLM (same architecture and size, AMALIA's parent), Gemma 4 12B and
+  Qwen3.5-9B were finite and gave valid answers in the same run. Chat templates were checked and are
+  not the cause.
+- **Status: open, not yet a deviation.** Nothing in the pre-registered policy has been changed. The
+  options, to be chosen with evidence from `python -m ptlegal_eval.probe` (where the values overflow,
+  and BF16 on a T4):
+  1. a precision that works for all four models, if one does at acceptable speed (all four were
+     trained in BF16, so BF16 for everyone would be defensible), recorded here as a deviation;
+  2. a different precision for AMALIA only, recorded as a deviation, which weakens "same treatment";
+  3. report that AMALIA could not be run in the pre-registered setup, if neither works.
+- **Rule:** whatever is chosen is decided before any test-set run and logged here with the evidence.
