@@ -193,9 +193,17 @@ def make_generate(
     return generate
 
 
+def _init_cuda(torch: Any) -> None:
+    """Real PyTorch raises "Invalid device argument" on memory-stat calls until CUDA is initialised
+    (it was only initialised by accident in the smoke run, which read GPU names first)."""
+    if torch.cuda.is_available():
+        torch.cuda.init()
+
+
 def gpu_peaks_gib() -> dict[str, float]:
     import torch
 
+    _init_cuda(torch)
     return {
         f"cuda:{i}": round(torch.cuda.max_memory_reserved(i) / 2**30, 2)
         for i in range(torch.cuda.device_count())
@@ -205,6 +213,7 @@ def gpu_peaks_gib() -> dict[str, float]:
 def reset_gpu_peaks() -> None:
     import torch
 
+    _init_cuda(torch)
     for i in range(torch.cuda.device_count()):
         torch.cuda.reset_peak_memory_stats(i)
 
@@ -245,6 +254,7 @@ def unload(loaded: LoadedModel) -> dict[str, float]:
 
     spec = loaded.spec
     loaded.model = None
+    _init_cuda(torch)
     for _ in range(2):
         gc.collect()
         if torch.cuda.is_available():

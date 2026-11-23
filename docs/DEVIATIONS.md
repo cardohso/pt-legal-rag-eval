@@ -66,3 +66,11 @@ all records were corrected before any further commit.
   2. a different precision for AMALIA only, recorded as a deviation, which weakens "same treatment";
   3. report that AMALIA could not be run in the pre-registered setup, if neither works.
 - **Rule:** whatever is chosen is decided before any test-set run and logged here with the evidence.
+- **Evidence so far (2026-11-23, Kaggle T4 x2, `python -m ptlegal_eval.gpucheck`):** a 4096 x 4096 matrix
+  multiply runs at 24.4 TFLOPS in FP16, 4.2 in FP32 and 2.6 in BF16. BF16 is emulated on a T4, about
+  9x slower than FP16 and slower than FP32. Estimated cost if BF16 were used for all four models:
+  prompt processing is compute-bound, so a 3,000-token prompt would take roughly 20 s instead of
+  about 2 s, adding on the order of 8 GPU hours over the full test run. This is an estimate from the
+  benchmark, not a measured run. The probe that measures AMALIA itself in FP16 and BF16 failed on a
+  bug of mine (CUDA was not initialised before a memory-stat call; fixed, with a test that
+  reproduces it) and has not yet produced results.
