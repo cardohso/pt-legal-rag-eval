@@ -171,3 +171,24 @@ def test_resuming_with_a_different_precision_is_refused_before_anything_is_writt
     with pytest.raises(ValueError, match="float16"):
         run(out, dtype="bfloat16")
     assert out.read_text(encoding="utf-8") == before
+
+
+def test_resuming_after_the_prompt_changed_is_refused_not_silently_skipped(tmp_path) -> None:
+    out = tmp_path / "p.jsonl"
+    run(out)
+    before = out.read_text(encoding="utf-8")
+    smaller = {**CONTEXTS, "g001": []}  # for example, a lower context budget dropped a passage
+    with pytest.raises(ValueError, match="g001"):
+        run_items(ITEMS, smaller, "amalia", "A", echo, out)
+    assert out.read_text(encoding="utf-8") == before
+
+
+def test_an_errored_item_may_be_retried_with_a_changed_prompt(tmp_path) -> None:
+    out = tmp_path / "p.jsonl"
+
+    def fail(messages):
+        raise RuntimeError("CUDA out of memory")
+
+    run_items(ITEMS[:1], CONTEXTS, "amalia", "A", fail, out)
+    summary = run_items(ITEMS[:1], {"g001": []}, "amalia", "A", echo, out)
+    assert summary.generated == 1

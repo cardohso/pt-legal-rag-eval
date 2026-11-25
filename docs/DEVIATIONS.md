@@ -124,4 +124,6 @@ all records were corrected before any further commit.
     leave condition A unchanged and remove no item. Trimming in a BM25-only proxy for condition B (not
     the real hybrid retriever): 20 of 150 questions at 7,500 (mean 4.81 of 5 passages kept), 14 at
     8,000 (4.87), 5 at 9,000 (4.96).
+  - **Budget decision (2026-11-25, the author's):** 7,500 characters for all four models, recorded in
+    `docs/FREEZE.md`, entry 2.
 

@@ -25,3 +25,10 @@ def test_dev_set_matches_its_recorded_hash() -> None:
 def test_freeze_log_states_the_same_hashes() -> None:
     assert sha(GOLDEN / "test.jsonl") in FREEZE
     assert sha(GOLDEN / "dev.jsonl") in FREEZE
+
+
+def test_the_context_budget_in_code_is_the_one_in_the_freeze_log() -> None:
+    from ptlegal_eval.golden_check import CONTEXT_BUDGET
+
+    assert CONTEXT_BUDGET == 7_500
+    assert "Context budget lowered to 7,500 characters" in FREEZE

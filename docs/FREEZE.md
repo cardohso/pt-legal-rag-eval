@@ -37,3 +37,21 @@ Appended here as separate dated entries, not edited into the entry above:
 - the final judge `reasoning_effort` and prompt version (section 8),
 - the refusal patterns, frozen after dev (section 8),
 - the context budget, if the step 6 smoke test forces a change from 12,000 characters (section 6).
+
+## 2. Context budget lowered to 7,500 characters (2026-11-25)
+
+Recorded before any test-set run, as pre-registration section 6 provides: "If the step 6 smoke test
+shows it doesn't fit, it is lowered for all models and recorded in `docs/FREEZE.md` before the first
+test-set run." The pre-registered budget was 12,000.
+
+| | |
+|---|---|
+| New budget | 7,500 characters of article text, **all four models, every condition** |
+| Why | in BF16, Gemma 4 12B ran out of memory on a prompt at 12,000 characters, and again at 10,000 in the memory ladder (`runs/memladder_2026-11-25/`) |
+| Margin | at 7,500 the ladder left 0.78 GiB free on the tighter GPU; 8,000 and 9,000 also ran, with 0.27 and 0.33 GiB, margins within the measurement noise |
+| Effect on condition A (primary) | none: the largest gold context is 7,151 characters (a dev item; 4,600 in test), so no item is removed or trimmed |
+| Effect on condition B | lower-ranked passages are dropped more often; a BM25-only stand-in trims 20 of 150 questions (mean 4.81 of 5 passages kept). The real hybrid retriever has not run |
+| Chosen by | the author, choosing the larger memory margin over keeping more condition B passages |
+| Enforced | `CONTEXT_BUDGET` in `src/ptlegal_eval/golden_check.py`; `tests/test_freeze.py` |
+
+A budget confirmation smoke run for all four models is still to be done.

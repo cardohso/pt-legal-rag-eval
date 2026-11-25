@@ -65,6 +65,20 @@ def run_items(
             f"{out_path} already holds {model_key} predictions made in precision {found}; this run "
             f"uses {dtype}. Use a new output folder so results are never mixed."
         )
+    stale = [
+        item["id"]
+        for item in items
+        if (r := done.get((*mine, item["id"]))) is not None
+        and r["error"] is None
+        and r.get("prompt_sha256")
+        != _sha256(build_messages(item["question"], contexts[item["id"]]))
+    ]
+    if stale:
+        raise ValueError(
+            f"{out_path} holds {model_key} predictions made from a different prompt for "
+            f"{stale[:5]} (for example the context budget or prompt changed). Use a new output "
+            "folder so stale answers are never reused."
+        )
     summary = RunSummary()
     out_path.parent.mkdir(parents=True, exist_ok=True)
     with out_path.open("a", encoding="utf-8") as f:

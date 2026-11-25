@@ -29,7 +29,9 @@ BEHAVIOUR_OF = {
     "unanswerable": "refuse",
     "false_premise": "correct",
 }
-CONTEXT_BUDGET = 12_000  # characters, from the pre-registration
+# Characters of article text. Pre-registered as 12,000; lowered to 7,500 for every model because
+# Gemma runs out of memory above it in BF16 (docs/FREEZE.md, entry 2).
+CONTEXT_BUDGET = 7_500
 SUSPENDED = {"263.º", "264.º"}  # suspended by Lei n.º 11/2013; see docs/CORPUS.md
 
 
