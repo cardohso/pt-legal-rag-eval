@@ -65,6 +65,7 @@ DTYPE = "bfloat16"
 @dataclass(frozen=True)
 class GenerationConfig:
     max_new_tokens: int = 400  # pre-registration, section 3; greedy, so no sampling settings
+    min_new_tokens: int | None = None  # only the memory test forces a full-length answer
 
 
 @dataclass(frozen=True)
@@ -188,6 +189,7 @@ def make_generate(
                 temperature=None,
                 top_p=None,
                 top_k=None,
+                **({"min_new_tokens": cfg.min_new_tokens} if cfg.min_new_tokens else {}),
             )
         new = out[0][n_in:]
         stopped = len(new) < cfg.max_new_tokens or (len(new) > 0 and int(new[-1]) in eos_ids)
@@ -213,6 +215,33 @@ def gpu_peaks_gib() -> dict[str, float]:
         f"cuda:{i}": round(torch.cuda.max_memory_reserved(i) / 2**30, 2)
         for i in range(torch.cuda.device_count())
     }
+
+
+def gpu_totals_gib() -> dict[str, float]:
+    import torch
+
+    _init_cuda(torch)
+    return {
+        f"cuda:{i}": round(torch.cuda.get_device_properties(i).total_memory / 2**30, 2)
+        for i in range(torch.cuda.device_count())
+    }
+
+
+def gpu_allocated_gib() -> dict[str, float]:
+    import torch
+
+    _init_cuda(torch)
+    return {
+        f"cuda:{i}": round(torch.cuda.memory_allocated(i) / 2**30, 2)
+        for i in range(torch.cuda.device_count())
+    }
+
+
+def free_gpu_cache() -> None:
+    import torch
+
+    gc.collect()
+    torch.cuda.empty_cache()
 
 
 def reset_gpu_peaks() -> None:

@@ -38,11 +38,8 @@ def test_cells_have_unique_ids_and_the_gate_precedes_any_model_work() -> None:
         assert len(ids) == len(set(ids)), path.name
         sources = ["".join(c["source"]) for c in nb["cells"] if c["cell_type"] == "code"]
         gate = next(i for i, s in enumerate(sources) if "ptlegal_eval.gpucheck" in s)
-        work = next(
-            i
-            for i, s in enumerate(sources)
-            if "ptlegal_eval.smoke run" in s or "ptlegal_eval.probe" in s
-        )
+        commands = ("ptlegal_eval.smoke run", "ptlegal_eval.probe", "ptlegal_eval.memladder")
+        work = next(i for i, s in enumerate(sources) if any(c in s for c in commands))
         assert gate < work, f"{path.name}: the hardware gate must come before model work"
         assert "raise RuntimeError" in sources[gate], "a failing `!` command does not stop Run All"
 
