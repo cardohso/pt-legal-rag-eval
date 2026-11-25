@@ -18,3 +18,8 @@ transformers 5.24.0. One unanswerable item used a BM25 stand-in context (smoke o
 GPU memory after unloading each model: 0.01 GiB (an earlier version leaked 8.5 GiB and made the
 next three models fail to load; fixed in `f5ef6d3`). See `docs/DEVIATIONS.md` for what this means for
 the pre-registered FP16 policy.
+
+## `probe_2026-11-25/` — AMALIA in FP16 and BF16 (diagnostic, not a result)
+
+Transcribed summary of the precision probe: where AMALIA overflows in FP16 and that it is finite in
+BF16. See `docs/DEVIATIONS.md`, section 3.

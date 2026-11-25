@@ -66,11 +66,24 @@ all records were corrected before any further commit.
   2. a different precision for AMALIA only, recorded as a deviation, which weakens "same treatment";
   3. report that AMALIA could not be run in the pre-registered setup, if neither works.
 - **Rule:** whatever is chosen is decided before any test-set run and logged here with the evidence.
-- **Evidence so far (2026-11-23, Kaggle T4 x2, `python -m ptlegal_eval.gpucheck`):** a 4096 x 4096 matrix
-  multiply runs at 24.4 TFLOPS in FP16, 4.2 in FP32 and 2.6 in BF16. BF16 is emulated on a T4, about
-  9x slower than FP16 and slower than FP32. Estimated cost if BF16 were used for all four models:
-  prompt processing is compute-bound, so a 3,000-token prompt would take roughly 20 s instead of
-  about 2 s, adding on the order of 8 GPU hours over the full test run. This is an estimate from the
-  benchmark, not a measured run. The probe that measures AMALIA itself in FP16 and BF16 failed on a
-  bug of mine (CUDA was not initialised before a memory-stat call; fixed, with a test that
-  reproduces it) and has not yet produced results.
+- **Benchmark (2026-11-23 and 2026-11-25, Kaggle T4 x2, `python -m ptlegal_eval.gpucheck`):** a
+  4096 x 4096 matrix multiply runs at 22.4 to 24.4 TFLOPS in FP16, 4.2 to 4.3 in FP32 and 2.6 in BF16.
+  BF16 is emulated on a T4.
+- **Probe result (2026-11-25, `runs/probe_2026-11-25/summary.txt`):**
+  - FP16: the first non-finite values are the output of `model.layers.9.mlp`; every generated token id is
+    0.
+  - BF16: logits are finite, nothing overflows, and the largest activation is 92,672 at
+    `model.layers.9.mlp`, also seen at layer 9's output and layer 10. That is above the FP16 maximum of
+    65,504, which explains the failure: AMALIA has activations FP16 cannot represent, and the value
+    is carried into the next layer, so keeping a single module in higher precision would not be enough.
+    EuroLLM, AMALIA's parent, stayed finite in FP16 (its activations were not probed).
+  - Decoding speed in BF16 was 9.5 tok/s, close to the 9.9 tok/s measured in FP16 on the same
+    hardware in the smoke run (different prompts, so only indicative). Decoding is memory-bound.
+  - Memory use is the same (BF16 and FP16 are both 2 bytes per value): 8.59 GiB per GPU.
+- **Cost of BF16 for all four, estimate:** prompt processing is compute-bound. Using the benchmark, and
+  assuming 3,000-token prompts in condition B (worst case) and 150 tokens in C, the 120-item test set in
+  three conditions takes about 3.5 extra GPU hours across the four models (about 0.8 to 1.1 h each). The
+  extra prompt-processing time itself has not been measured on a real prompt. **Correction:** an earlier
+  entry here estimated about 8 extra GPU hours; that assumed every prompt was 3,000 tokens and was too
+  high.
+- **Decision:** pending (the author's).

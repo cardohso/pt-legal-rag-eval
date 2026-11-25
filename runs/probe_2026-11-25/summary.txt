@@ -1,0 +1,29 @@
+# Transcribed from the output the author pasted from Kaggle on 2026-11-25 (download logs removed).
+# Notebook: notebooks/step6_probe.ipynb, code at commit f340971, Kaggle T4 x2.
+# probe.json was not downloaded.
+
+Hardware ok: 2 GPUs (Tesla T4, Tesla T4)
+Matrix-multiply benchmark on GPU 0 (higher is faster):
+  float16   22.4 TFLOPS
+  bfloat16  2.6 TFLOPS
+  float32   4.3 TFLOPS
+(an earlier run of the same benchmark on 2026-11-23: 24.4 / 2.6 / 4.2)
+
+## amalia float16: loader causal_lm, load 159.9 s
+   sanity: {'finite_logits': False, 'top5': [], 'dtype': 'torch.float16'}
+   first non-finite module: model.layers.9.mlp
+   largest activations (limit in FP16 is 65504): [('model.layers.9.mlp', 3.0000000054977558e+38), ('model.layers.9', 3.0000000054977558e+38), ('model.layers.1', 1645.0)]
+   generation: 11.97 tok/s, first ids [0, 0, 0, 0, 0, 0, 0, 0]
+   sample: ''
+   peak GiB {'cuda:0': 8.59, 'cuda:1': 8.59}, still allocated after unload {'cuda:0': 0.01, 'cuda:1': 0.01}
+
+## amalia bfloat16: loader causal_lm, load 34.3 s (weights already downloaded)
+   sanity: {'finite_logits': True, 'top5': ['O', 'B', 'Ol', 'Hello', 'Sim'], 'dtype': 'torch.bfloat16'}
+   first non-finite module: None
+   largest activations (limit in FP16 is 65504): [('model.layers.9.mlp', 92672.0), ('model.layers.9', 92672.0), ('model.layers.10', 92672.0)]
+   generation: 9.5 tok/s, first ids [40450, 23350, 2243, 1168, 119732, 799, 36033, 119732]
+   sample: 'Um trabalhador tem, no mínimo, 25 dias úteis de férias por ano (art. 132.º, n.º 1, alínea a)).'
+   peak GiB {'cuda:0': 8.59, 'cuda:1': 8.59}, still allocated after unload {'cuda:0': 0.01, 'cuda:1': 0.01}
+
+# The "3e+38" values are the probe's stand-in for infinity. The sample is closed book, one question,
+# and factually wrong (the Code gives 22 working days, art. 238): it shows fluent output, not quality.
