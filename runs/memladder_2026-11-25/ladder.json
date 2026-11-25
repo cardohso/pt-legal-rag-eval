@@ -1,0 +1,63 @@
+{
+  "info": {
+    "loader_used": "multimodal_lm",
+    "load_seconds": 101.5,
+    "dtype": "bfloat16",
+    "total_gib": {
+      "cuda:0": 14.56,
+      "cuda:1": 14.56
+    },
+    "after_load_gib": {
+      "cuda:0": 12.44,
+      "cuda:1": 9.83
+    }
+  },
+  "steps": [
+    {
+      "budget": 7500,
+      "context_chars": 7491,
+      "ok": true,
+      "input_tokens": 1946,
+      "new_tokens": 400,
+      "seconds": 74.2,
+      "peak_gib": {
+        "cuda:0": 13.78,
+        "cuda:1": 11.11
+      },
+      "headroom_gib": 0.78
+    },
+    {
+      "budget": 8000,
+      "context_chars": 7999,
+      "ok": true,
+      "input_tokens": 2277,
+      "new_tokens": 400,
+      "seconds": 82.4,
+      "peak_gib": {
+        "cuda:0": 14.29,
+        "cuda:1": 11.57
+      },
+      "headroom_gib": 0.27
+    },
+    {
+      "budget": 9000,
+      "context_chars": 8998,
+      "ok": true,
+      "input_tokens": 2500,
+      "new_tokens": 400,
+      "seconds": 85.0,
+      "peak_gib": {
+        "cuda:0": 14.23,
+        "cuda:1": 11.64
+      },
+      "headroom_gib": 0.33
+    },
+    {
+      "budget": 10000,
+      "context_chars": 9986,
+      "ok": false,
+      "error": "OutOfMemoryError: CUDA out of memory. Tried to allocate 454.00 MiB. GPU 0 has a total capacity of 14.56 GiB of which 30.81 MiB is free. Including non-PyTorch memory, this process has 14.53 GiB memory in use. Of the allocated memory 13.80 GiB is allocated by PyTorch, and 618.16 MiB is reserved by PyTorch but unallocat"
+    }
+  ],
+  "largest_passing_budget": 9000
+}

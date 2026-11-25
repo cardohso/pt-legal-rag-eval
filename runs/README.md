@@ -38,3 +38,8 @@ tokens), condition A, code at commit `72d4271`, Kaggle T4 x2, torch 2.11.0, tran
 
 Gemma's peak includes the failed attempt. It needed 154 MiB with 83 MiB free on GPU 0. GPU memory
 after unloading each model: 0.01 GiB.
+
+## `memladder_2026-11-25/` — which context budget can Gemma run in BF16? (diagnostic, not a result)
+
+Gemma 4 12B loaded as in the study (code at commit `6e9f497`), longest articles at each budget, 400
+new tokens forced, rising budgets, stop at first failure. `ladder.json` holds the full record.

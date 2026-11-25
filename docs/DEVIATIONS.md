@@ -107,5 +107,21 @@ all records were corrected before any further commit.
     primary condition, unchanged and removes no item. It can only trim lower-ranked passages in
     condition B. (A BM25-only proxy for B, not the real hybrid retriever, exceeds 8,000 characters for
     14 of 150 questions, 9,000 for 5 and 10,000 for 2.)
-  - **Open:** the largest budget Gemma can actually run is not yet measured.
+  - **Memory ladder (2026-11-25, `runs/memladder_2026-11-25/`):** Gemma holds 12.44 GiB on GPU 0 and
+    9.83 on GPU 1 after loading (14.56 each). With a forced 400-token answer:
+
+    | Budget (chars) | Input tokens | Result | Peak GiB on GPU 0 | Spare on GPU 0 |
+    |---|---|---|---|---|
+    | 7,500 | 1,946 | ok | 13.78 | 0.78 |
+    | 8,000 | 2,277 | ok | 14.29 | 0.27 |
+    | 9,000 | 2,500 | ok | 14.23 | 0.33 |
+    | 10,000 | (not recorded) | out of memory (454 MiB requested, 31 MiB free) | | |
+
+    Peaks are of reserved memory and are not smooth (9,000 peaked slightly below 8,000), so margins of
+    about 0.3 GiB are within the noise. One clean ascending pass in one process: a full run sends
+    hundreds of prompts of varying length, where fragmentation can only reduce the margin.
+  - **What each budget would cut (sizes only, no correctness looked at):** 7,500, 8,000 and 9,000 all
+    leave condition A unchanged and remove no item. Trimming in a BM25-only proxy for condition B (not
+    the real hybrid retriever): 20 of 150 questions at 7,500 (mean 4.81 of 5 passages kept), 14 at
+    8,000 (4.87), 5 at 9,000 (4.96).
 
