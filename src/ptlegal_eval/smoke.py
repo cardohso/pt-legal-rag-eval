@@ -9,6 +9,7 @@ happens, so a crash loses at most one item.
 from __future__ import annotations
 
 import argparse
+import functools
 import json
 import platform
 import subprocess
@@ -21,9 +22,9 @@ from typing import Any
 
 from ptlegal_eval.bm25 import BM25
 from ptlegal_eval.chunks import Chunk, read_chunks
-from ptlegal_eval.contexts import distractor_context, gold_context, verify_chunks
-from ptlegal_eval.golden_check import CATEGORIES
-from ptlegal_eval.models import MODELS, GenerationResult, ModelSpec
+from ptlegal_eval.contexts import chunk_order_key, distractor_context, gold_context, verify_chunks
+from ptlegal_eval.golden_check import CATEGORIES, CONTEXT_BUDGET
+from ptlegal_eval.models import DTYPE, MODELS, GenerationResult, ModelSpec
 from ptlegal_eval.prompts import PROMPT_VERSION, build_messages
 from ptlegal_eval.retrieve import indexed_text
 from ptlegal_eval.runner import read_predictions, run_items
@@ -38,14 +39,29 @@ class Backend:
     close: Callable[[], dict[str, float] | None]
 
 
-def real_backend(spec: ModelSpec) -> Backend:
+STRESS_ID = "stress-budget"
+
+
+def stress_context(chunks: Sequence[Chunk], budget: int = CONTEXT_BUDGET) -> list[Chunk]:
+    """The longest chunks that fit the context budget, in article order: the largest prompt the
+    study can send, so memory and speed are checked at that size."""
+    picked: list[Chunk] = []
+    used = 0
+    for c in sorted(chunks, key=lambda c: (-len(c.text), chunk_order_key(c))):
+        if used + len(c.text) <= budget:
+            picked.append(c)
+            used += len(c.text)
+    return sorted(picked, key=chunk_order_key)
+
+
+def real_backend(spec: ModelSpec, dtype: str = DTYPE) -> Backend:
     import time
 
     from ptlegal_eval import models as m
 
     m.reset_gpu_peaks()
     start = time.perf_counter()
-    loaded = m.load_model(spec)
+    loaded = m.load_model(spec, dtype=dtype)
     load_seconds = round(time.perf_counter() - start, 1)
     return Backend(
         generate=m.make_generate(loaded),
@@ -119,7 +135,10 @@ def run_smoke(
     out_dir: Path,
     backend_factory: Callable[[ModelSpec], Backend] = real_backend,
     log: Callable[[str], None] = print,
+    dtype: str = DTYPE,
 ) -> dict[str, Any]:
+    if backend_factory is real_backend:
+        backend_factory = functools.partial(real_backend, dtype=dtype)
     out_dir.mkdir(parents=True, exist_ok=True)
     items = select_smoke_items(dev_items)
     bm25 = BM25({c.id: indexed_text(c) for c in chunks})
@@ -132,11 +151,26 @@ def run_smoke(
             contexts[it["id"]] = distractor_context(it, bm25, chunks, k=3)
             kinds[it["id"]] = "bm25_smoke_only"
 
+    stress = {
+        "id": STRESS_ID,
+        "question": items[0]["question"],
+        "gold_passage_ids": [],
+        "metadata": {"category": "stress"},
+    }
+    contexts[STRESS_ID], kinds[STRESS_ID] = stress_context(chunks), "stress_budget"
+    items = [*items, stress]
+
     meta_path = out_dir / "meta.json"
     old = json.loads(meta_path.read_text(encoding="utf-8")) if meta_path.exists() else {}
+    if old.get("models") and old.get("dtype") != dtype:
+        raise ValueError(
+            f"{out_dir} holds a run in precision {old.get('dtype')}; this run uses {dtype}. "
+            "Use a new output folder so results are never mixed."
+        )
     meta: dict[str, Any] = {
         "prompt_version": PROMPT_VERSION,
         "condition": "A",
+        "dtype": dtype,
         "max_new_tokens": 400,
         "env": _env(),
         "items": [
@@ -161,7 +195,7 @@ def run_smoke(
             continue
         try:
             path = out_dir / f"{key}.jsonl"
-            run_items(items, contexts, key, "A", backend.generate, path, log=log)
+            run_items(items, contexts, key, "A", backend.generate, path, log=log, dtype=dtype)
             rendered = {
                 i["id"]: backend.render(build_messages(i["question"], contexts[i["id"]]))
                 for i in items
@@ -189,7 +223,7 @@ def format_report(out_dir: Path) -> str:
     env = meta["env"]
     lines = [
         f"Smoke test, prompt {meta['prompt_version']}, condition {meta['condition']}, "
-        f"commit {env.get('git_sha')}",
+        f"precision {meta.get('dtype')}, commit {env.get('git_sha')}",
         f"torch {env.get('torch')}, transformers {env.get('transformers')}, GPUs {env.get('gpus')}",
         "",
     ]
@@ -200,7 +234,8 @@ def format_report(out_dir: Path) -> str:
         lines += [
             f"## {key}: loader {m['loader_used']}, load {m['load_seconds']} s, "
             f"peak GiB {m['peak_gib']}",
-            f"   valid {m['valid']}/5, errors {m['errors']}, truncated {m['truncated']}, "
+            f"   valid {m['valid']}/{len(meta['items'])}, errors {m['errors']}, "
+            f"truncated {m['truncated']}, "
             f"{m['tokens_per_s']} tok/s, longest prompt {m['max_input_tokens']} tokens",
         ]
         if "sanity" in m:
@@ -221,7 +256,7 @@ def format_report(out_dir: Path) -> str:
                 answer = (
                     f"<empty> raw={r['answer_raw'][:60]!r} first ids={r['first_token_ids'][:8]}"
                 )
-            tokens = f"{r['n_input_tokens']}->{r['n_new_tokens']}"
+            tokens = f"{r['n_input_tokens']}->{r['n_new_tokens']} {r['latency_s']:.0f}s"
             category = cats.get(r["item_id"], "?")
             lines.append(f"   {r['item_id']} {category:<15} {tokens} {r['finish']} | {answer}")
         lines.append("")
@@ -236,6 +271,7 @@ def main(argv: Sequence[str] | None = None) -> None:
     r.add_argument("--dev", type=Path, default=Path("data/golden/dev.jsonl"))
     r.add_argument("--manifest", type=Path, default=Path("data/corpus_manifest.json"))
     r.add_argument("--models", default=",".join(MODELS))
+    r.add_argument("--dtype", default=DTYPE, help="precision for every model (study: BF16)")
     r.add_argument("--out", type=Path, default=Path("runs/smoke"))
     rep = sub.add_parser("report")
     rep.add_argument("out", type=Path)
@@ -252,7 +288,7 @@ def main(argv: Sequence[str] | None = None) -> None:
     unknown = [k for k in keys if k not in MODELS]
     if unknown:
         sys.exit(f"unknown models {unknown}; choose from {list(MODELS)}")
-    run_smoke(keys, chunks, dev, args.out)
+    run_smoke(keys, chunks, dev, args.out, dtype=args.dtype)
     print(format_report(args.out))
 
 

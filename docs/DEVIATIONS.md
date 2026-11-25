@@ -50,7 +50,7 @@ must be reported in the "Deviations" section of `REPORT.md`.
 The batch 2 approval comments and this file first said 2026-11-12. The correct date is 2026-11-11;
 all records were corrected before any further commit.
 
-## 3. FP16 breaks AMALIA: the "FP16 for every model" policy is under review (opened 2026-11-22)
+## 3. Precision changed from FP16 to BF16 for all four models (opened 2026-11-22, decided 2026-11-25)
 
 - **Pre-registration (section 3):** all four models on Kaggle T4 x2 in FP16, no quantisation.
 - **What happened:** in the step 6 smoke test (`runs/smoke_fp16_2026-11-22/`, commit `f5ef6d3`) AMALIA
@@ -58,11 +58,10 @@ all records were corrected before any further commit.
   5 answers were empty. EuroLLM (same architecture and size, AMALIA's parent), Gemma 4 12B and
   Qwen3.5-9B were finite and gave valid answers in the same run. Chat templates were checked and are
   not the cause.
-- **Status: open, not yet a deviation.** Nothing in the pre-registered policy has been changed. The
-  options, to be chosen with evidence from `python -m ptlegal_eval.probe` (where the values overflow,
-  and BF16 on a T4):
-  1. a precision that works for all four models, if one does at acceptable speed (all four were
-     trained in BF16, so BF16 for everyone would be defensible), recorded here as a deviation;
+- **Status:** decided (below). The options, weighed with evidence from `python -m ptlegal_eval.probe`
+  (where the values overflow, and BF16 on a T4), were:
+  1. a precision that works for all four models, if one does at acceptable speed (all four publish
+     their weights in BF16, Qwen all but 3,840 values, so BF16 for everyone is defensible);
   2. a different precision for AMALIA only, recorded as a deviation, which weakens "same treatment";
   3. report that AMALIA could not be run in the pre-registered setup, if neither works.
 - **Rule:** whatever is chosen is decided before any test-set run and logged here with the evidence.
@@ -86,4 +85,10 @@ all records were corrected before any further commit.
   extra prompt-processing time itself has not been measured on a real prompt. **Correction:** an earlier
   entry here estimated about 8 extra GPU hours; that assumed every prompt was 3,000 tokens and was too
   high.
-- **Decision:** pending (the author's).
+- **Decision (2026-11-25, the author's):** **BF16 for all four models**, so every model keeps identical
+  treatment. This replaces "FP16" in pre-registration section 3; everything else there is unchanged
+  (no quantisation, same GPUs, memory limits, greedy decoding, 400 new tokens, thinking off). Decided
+  before any test-set run. **Provisional until a BF16 smoke test of all four passes:** finite output,
+  memory within limits including a prompt at the 12,000-character budget, and acceptable speed. The
+  smoke now includes that worst-case prompt, and every prediction records its precision; the runner
+  refuses to mix precisions in one output folder.

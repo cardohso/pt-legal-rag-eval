@@ -17,4 +17,5 @@ prompt.
 - User message: the articles as `[Artigo N.º — epígrafe]` blocks in article-number order (condition
   A) or retrieval rank order (condition B), then `Pergunta: ...`. Closed book: `Pergunta: ...` only.
 - Settings shared by every model: the model's own chat template, `enable_thinking=False`, greedy
-  decoding, `max_new_tokens=400`, FP16.
+  decoding, `max_new_tokens=400`, FP16. (From the next smoke run on, every model runs in BF16
+  instead; see `docs/DEVIATIONS.md`, section 3. The prompt text is unchanged.)

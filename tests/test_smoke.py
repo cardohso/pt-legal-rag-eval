@@ -1,9 +1,16 @@
 import json
 
 from ptlegal_eval.chunks import Chunk
-from ptlegal_eval.golden_check import CATEGORIES
-from ptlegal_eval.models import GenerationResult
-from ptlegal_eval.smoke import Backend, format_report, run_smoke, select_smoke_items
+from ptlegal_eval.golden_check import CATEGORIES, CONTEXT_BUDGET
+from ptlegal_eval.models import DTYPE, GenerationResult
+from ptlegal_eval.smoke import (
+    STRESS_ID,
+    Backend,
+    format_report,
+    run_smoke,
+    select_smoke_items,
+    stress_context,
+)
 
 CHUNKS = [
     Chunk("CT-1", "1.º", "Um", "S", "texto sobre ferias e descanso"),
@@ -55,14 +62,14 @@ def test_run_smoke_writes_predictions_prompts_and_meta(tmp_path) -> None:
             json.loads(x)
             for x in (tmp_path / f"{m}.jsonl").read_text(encoding="utf-8").splitlines()
         ]
-        assert len(recs) == 5 and all(r["valid"] for r in recs)
+        assert len(recs) == 6 and all(r["valid"] for r in recs)
         prompts = json.loads((tmp_path / f"{m}_rendered_prompts.json").read_text(encoding="utf-8"))
-        assert len(prompts) == 5
+        assert len(prompts) == 6
     saved = json.loads((tmp_path / "meta.json").read_text(encoding="utf-8"))
     assert saved["models"]["amalia"]["loader_used"] == "causal_lm"
     assert saved["models"]["amalia"]["peak_gib"] == {"cuda:0": 12.0, "cuda:1": 9.0}
-    assert saved["models"]["amalia"]["valid"] == 5 and saved["models"]["amalia"]["tokens_per_s"] > 0
-    assert saved["prompt_version"] == "v0" and len(saved["items"]) == 5
+    assert saved["models"]["amalia"]["valid"] == 6 and saved["models"]["amalia"]["tokens_per_s"] > 0
+    assert saved["prompt_version"] == "v0" and len(saved["items"]) == 6
     assert meta["models"].keys() == saved["models"].keys()
 
 
@@ -86,7 +93,7 @@ def test_a_model_that_fails_to_load_is_recorded_and_the_others_still_run(tmp_pat
         ["gemma", "amalia"], CHUNKS, dev_items(), tmp_path, factory, log=lambda s: None
     )
     assert "out of memory" in meta["models"]["gemma"]["load_error"]
-    assert meta["models"]["amalia"]["valid"] == 5
+    assert meta["models"]["amalia"]["valid"] == 6
 
 
 def test_rerunning_does_not_repeat_finished_work(tmp_path) -> None:
@@ -103,7 +110,7 @@ def test_rerunning_does_not_repeat_finished_work(tmp_path) -> None:
 
     run_smoke(["amalia"], CHUNKS, dev_items(), tmp_path, counting, log=lambda s: None)
     run_smoke(["amalia"], CHUNKS, dev_items(), tmp_path, counting, log=lambda s: None)
-    assert len(calls) == 5
+    assert len(calls) == 6
 
 
 def test_report_summarises_every_model_in_plain_text(tmp_path) -> None:
@@ -138,3 +145,32 @@ def test_report_shows_why_an_answer_is_empty_and_any_sanity_check(tmp_path) -> N
     run_smoke(["amalia"], CHUNKS, dev_items(), tmp_path, factory, log=lambda s: None)
     text = format_report(tmp_path)
     assert "finite_logits" in text and "empty" in text and "[0, 0, 0]" in text
+
+
+def test_the_study_precision_is_bf16_and_is_recorded(tmp_path) -> None:
+    meta = run_smoke(["amalia"], CHUNKS, dev_items(), tmp_path, fake_backend, log=lambda s: None)
+    assert DTYPE == "bfloat16" and meta["dtype"] == "bfloat16"
+    recs = (tmp_path / "amalia.jsonl").read_text(encoding="utf-8").splitlines()
+    assert {json.loads(x)["dtype"] for x in recs} == {"bfloat16"}
+    assert "bfloat16" in format_report(tmp_path)
+
+
+def test_the_stress_item_fills_the_context_budget_without_exceeding_it() -> None:
+    big = [
+        Chunk(f"CT-{n}", f"{n}.º", "E", "S", "palavra " * size)
+        for n, size in ((1, 480), (2, 470), (3, 460), (4, 450), (5, 3))
+    ]
+    context = stress_context(big)
+    total = sum(len(c.text) for c in context)
+    assert total <= CONTEXT_BUDGET and total > 0.9 * CONTEXT_BUDGET
+    assert [c.id for c in context] == sorted(
+        c.id for c in context
+    )  # article order, as in condition A
+
+
+def test_smoke_runs_the_five_dev_items_plus_the_stress_prompt(tmp_path) -> None:
+    meta = run_smoke(["amalia"], CHUNKS, dev_items(), tmp_path, fake_backend, log=lambda s: None)
+    kinds = {i["id"]: i["context"] for i in meta["items"]}
+    assert len(kinds) == 6 and kinds[STRESS_ID] == "stress_budget"
+    assert meta["models"]["amalia"]["valid"] == 6
+    assert "valid 6/6" in format_report(tmp_path)

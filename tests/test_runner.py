@@ -154,3 +154,20 @@ def test_records_keep_the_first_generated_token_ids_for_diagnosis(tmp_path) -> N
     recs = lines(out)
     assert recs[0]["first_token_ids"] == [0, 0, 0] and recs[1]["first_token_ids"] == [5, 6, 4]
     assert recs[2]["first_token_ids"] == []
+
+
+def test_every_record_says_which_precision_produced_it(tmp_path) -> None:
+    out = tmp_path / "p.jsonl"
+    run(out, dtype="bfloat16")
+    assert {r["dtype"] for r in lines(out)} == {"bfloat16"}
+
+
+def test_resuming_with_a_different_precision_is_refused_before_anything_is_written(
+    tmp_path,
+) -> None:
+    out = tmp_path / "p.jsonl"
+    run(out, dtype="float16")
+    before = out.read_text(encoding="utf-8")
+    with pytest.raises(ValueError, match="float16"):
+        run(out, dtype="bfloat16")
+    assert out.read_text(encoding="utf-8") == before

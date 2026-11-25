@@ -1,8 +1,9 @@
 """The four systems under test: pinned revisions, loading, and one generation function.
 
-Same treatment for every model (pre-registration, section 3): FP16, no quantisation, greedy
-decoding, the model's own chat template, thinking off. Heavy imports (torch, transformers) happen
-inside the functions that need them, so tests and CI never load them.
+Same treatment for every model: BF16, no quantisation, greedy decoding, the model's own chat
+template, thinking off. The pre-registration said FP16; AMALIA overflows FP16, so every model runs
+in BF16 (docs/DEVIATIONS.md, section 3). Heavy imports (torch, transformers) happen inside the
+functions that need them, so tests and CI never load them.
 """
 
 from __future__ import annotations
@@ -57,6 +58,10 @@ MODELS: dict[str, ModelSpec] = {
 }
 
 
+# The single precision every model runs in. FP16 (pre-registered) overflows in AMALIA.
+DTYPE = "bfloat16"
+
+
 @dataclass(frozen=True)
 class GenerationConfig:
     max_new_tokens: int = 400  # pre-registration, section 3; greedy, so no sampling settings
@@ -94,7 +99,7 @@ class LoadedModel:
     load_errors: list[str]
 
 
-def load_model(spec: ModelSpec, max_memory_gib: int = 13, dtype: str = "float16") -> LoadedModel:
+def load_model(spec: ModelSpec, max_memory_gib: int = 13, dtype: str = DTYPE) -> LoadedModel:
     import torch
     import transformers
 

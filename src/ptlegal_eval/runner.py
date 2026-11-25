@@ -54,8 +54,17 @@ def run_items(
     out_path: Path,
     prompt_version: str = PROMPT_VERSION,
     log: Callable[[str], None] = print,
+    dtype: str | None = None,
 ) -> RunSummary:
     done = read_predictions(out_path)
+    mine = (model_key, condition, prompt_version)
+    other = {r.get("dtype") for k, r in done.items() if k[:3] == mine} - {dtype}
+    if other:
+        found = sorted(map(str, other))
+        raise ValueError(
+            f"{out_path} already holds {model_key} predictions made in precision {found}; this run "
+            f"uses {dtype}. Use a new output folder so results are never mixed."
+        )
     summary = RunSummary()
     out_path.parent.mkdir(parents=True, exist_ok=True)
     with out_path.open("a", encoding="utf-8") as f:
@@ -71,6 +80,7 @@ def run_items(
                 "condition": condition,
                 "prompt_version": prompt_version,
                 "item_id": item["id"],
+                "dtype": dtype,
                 "context_ids": None if chunks is None else [c.id for c in chunks],
                 "prompt_sha256": _sha256(messages),
             }
