@@ -1,0 +1,196 @@
+{
+  "prompt_version": "v0",
+  "condition": "A",
+  "dtype": "bfloat16",
+  "max_new_tokens": 400,
+  "env": {
+    "python": "3.13.16",
+    "created": "2026-11-25T18:27:46+00:00",
+    "torch": "2.11.0+cu130",
+    "transformers": "5.24.1",
+    "accelerate": "1.16.0",
+    "git_sha": "72d427131893eb65b20f7368ea019287c3cf6f74",
+    "gpus": [
+      "Tesla T4",
+      "Tesla T4"
+    ]
+  },
+  "items": [
+    {
+      "id": "g002",
+      "category": "single_article",
+      "context": "gold",
+      "context_ids": [
+        "CT-238"
+      ]
+    },
+    {
+      "id": "g020",
+      "category": "multi_article",
+      "context": "gold",
+      "context_ids": [
+        "CT-328",
+        "CT-329"
+      ]
+    },
+    {
+      "id": "g028",
+      "category": "numeric",
+      "context": "gold",
+      "context_ids": [
+        "CT-211"
+      ]
+    },
+    {
+      "id": "g008",
+      "category": "unanswerable",
+      "context": "bm25_smoke_only",
+      "context_ids": [
+        "CT-305",
+        "CT-274",
+        "CT-366"
+      ]
+    },
+    {
+      "id": "g009",
+      "category": "false_premise",
+      "context": "gold",
+      "context_ids": [
+        "CT-203"
+      ]
+    },
+    {
+      "id": "stress-budget",
+      "category": "stress",
+      "context": "stress_budget",
+      "context_ids": [
+        "CT-40#1",
+        "CT-285#1",
+        "CT-473",
+        "CT-502#1"
+      ]
+    }
+  ],
+  "models": {
+    "amalia": {
+      "loader_used": "causal_lm",
+      "load_seconds": 174.4,
+      "load_errors": [],
+      "sanity": {
+        "finite_logits": true,
+        "top5": [
+          "O",
+          "B",
+          "Ol",
+          "Hello",
+          "Sim"
+        ],
+        "dtype": "torch.bfloat16"
+      },
+      "peak_gib": {
+        "cuda:0": 12.13,
+        "cuda:1": 12.14
+      },
+      "valid": 6,
+      "errors": 0,
+      "truncated": 0,
+      "tokens_per_s": 4.06,
+      "max_input_tokens": 3172,
+      "total_seconds": 96.7,
+      "allocated_after_unload_gib": {
+        "cuda:0": 0.01,
+        "cuda:1": 0.01
+      }
+    },
+    "eurollm": {
+      "loader_used": "causal_lm",
+      "load_seconds": 148.0,
+      "load_errors": [],
+      "sanity": {
+        "finite_logits": true,
+        "top5": [
+          "O",
+          "¡",
+          "B",
+          "Ol",
+          "**"
+        ],
+        "dtype": "torch.bfloat16"
+      },
+      "peak_gib": {
+        "cuda:0": 12.13,
+        "cuda:1": 12.13
+      },
+      "valid": 6,
+      "errors": 0,
+      "truncated": 0,
+      "tokens_per_s": 5.44,
+      "max_input_tokens": 3172,
+      "total_seconds": 150.2,
+      "allocated_after_unload_gib": {
+        "cuda:0": 0.01,
+        "cuda:1": 0.01
+      }
+    },
+    "gemma": {
+      "loader_used": "multimodal_lm",
+      "load_seconds": 214.6,
+      "load_errors": [],
+      "sanity": {
+        "finite_logits": true,
+        "top5": [
+          "Olá",
+          "สวัสดี",
+          "<|channel>",
+          "こんにちは",
+          "Ol"
+        ],
+        "dtype": "torch.bfloat16"
+      },
+      "peak_gib": {
+        "cuda:0": 14.35,
+        "cuda:1": 11.01
+      },
+      "valid": 5,
+      "errors": 1,
+      "truncated": 0,
+      "tokens_per_s": 3.46,
+      "max_input_tokens": 1637,
+      "total_seconds": 85.3,
+      "allocated_after_unload_gib": {
+        "cuda:0": 0.01,
+        "cuda:1": 0.01
+      }
+    },
+    "qwen": {
+      "loader_used": "multimodal_lm",
+      "load_seconds": 176.3,
+      "load_errors": [],
+      "sanity": {
+        "finite_logits": true,
+        "top5": [
+          "Ol",
+          "Hello",
+          "Oi",
+          "O",
+          "ol"
+        ],
+        "dtype": "torch.bfloat16"
+      },
+      "peak_gib": {
+        "cuda:0": 11.71,
+        "cuda:1": 10.86
+      },
+      "valid": 6,
+      "errors": 0,
+      "truncated": 0,
+      "tokens_per_s": 4.76,
+      "max_input_tokens": 3123,
+      "total_seconds": 86.9,
+      "allocated_after_unload_gib": {
+        "cuda:0": 0.01,
+        "cuda:1": 0.01
+      }
+    }
+  }
+}

@@ -92,3 +92,20 @@ all records were corrected before any further commit.
   memory within limits including a prompt at the 12,000-character budget, and acceptable speed. The
   smoke now includes that worst-case prompt, and every prediction records its precision; the runner
   refuses to mix precisions in one output folder.
+- **BF16 smoke result (2026-11-25, `runs/smoke_bf16_2026-11-25/`): not yet passed.**
+  - Finite output: all four. AMALIA now answers (6/6 valid); EuroLLM and Qwen 6/6; Gemma 5/6.
+  - Memory: **Gemma ran out of memory on the worst-case prompt at the 12,000-character budget** (GPU 0:
+    14.48 of 14.56 GiB in use, 154 MiB requested). The other three fit it. BF16 on a T4 needs more
+    memory for long prompts than FP16 did: AMALIA peaked at 8.59 GiB on a short prompt and 12.13 GiB
+    with the worst-case one.
+  - Speed: acceptable. From six prompts per model, the 120-item test set in three conditions is on the
+    order of 7 to 10 GPU hours for all four models (an estimate, not a measurement).
+  - **Context budget:** pre-registration section 6 says that if the smoke test shows the 12,000
+    characters do not fit, the budget is lowered for all models and recorded in `docs/FREEZE.md` before
+    the first test-set run. The largest gold context in the golden set is 7,151 characters (a dev
+    item); the largest in the test set is 4,600. So a budget of 8,000 or more leaves condition A, the
+    primary condition, unchanged and removes no item. It can only trim lower-ranked passages in
+    condition B. (A BM25-only proxy for B, not the real hybrid retriever, exceeds 8,000 characters for
+    14 of 150 questions, 9,000 for 5 and 10,000 for 2.)
+  - **Open:** the largest budget Gemma can actually run is not yet measured.
+

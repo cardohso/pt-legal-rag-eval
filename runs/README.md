@@ -23,3 +23,18 @@ the pre-registered FP16 policy.
 
 Transcribed summary of the precision probe: where AMALIA overflows in FP16 and that it is finite in
 BF16. See `docs/DEVIATIONS.md`, section 3.
+
+## `smoke_bf16_2026-11-25/` — step 6 smoke test, BF16, prompt v0 (not a result)
+
+5 dev items per model plus one worst-case prompt at the 12,000-character budget (about 3,100 to 3,200
+tokens), condition A, code at commit `72d4271`, Kaggle T4 x2, torch 2.11.0, transformers 5.24.1.
+
+| Model | Finite | Valid | Peak GiB (GPU 0/1) | Seconds on the worst-case prompt |
+|---|---|---|---|---|
+| AMALIA | yes | 6/6 | 12.13 / 12.14 | 33 (19 new tokens) |
+| EuroLLM | yes | 6/6 | 12.13 / 12.13 | 46 (100 new tokens) |
+| Gemma 4 12B | yes | 5/6 | 14.35 / 11.01 | **out of memory** |
+| Qwen3.5-9B | yes | 6/6 | 11.71 / 10.86 | 26 (26 new tokens) |
+
+Gemma's peak includes the failed attempt. It needed 154 MiB with 83 MiB free on GPU 0. GPU memory
+after unloading each model: 0.01 GiB.
