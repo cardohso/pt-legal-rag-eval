@@ -55,3 +55,16 @@ test-set run." The pre-registered budget was 12,000.
 | Enforced | `CONTEXT_BUDGET` in `src/ptlegal_eval/golden_check.py`; `tests/test_freeze.py` |
 
 A budget confirmation smoke run for all four models is still to be done.
+
+## 3. Precision and context budget confirmed (2026-11-26)
+
+The confirmation smoke run for all four models passed (`runs/smoke_bf16_7500_2026-11-25/`, run
+2026-11-25, commit `c7ab250`): finite output in BF16, 6/6 valid answers per model, no errors, and the
+worst-case prompt at the 7,500-character budget fits. This ends the "provisional" status of the BF16
+decision (`docs/DEVIATIONS.md`, section 3) and of entry 2. Recorded before any test-set run.
+
+**Residual risk.** Gemma peaked at 14.07 of 14.56 GiB on GPU 0, 0.49 GiB spare. That is less than the
+0.78 GiB of the clean memory test, because other prompts had been processed first. The smoke answers
+were short, so the longest prompt, a full 400-token answer and hundreds of earlier prompts have not
+been tested together. If Gemma runs out of memory in a test run, those failures are counted and
+reported separately, not hidden in its scores.

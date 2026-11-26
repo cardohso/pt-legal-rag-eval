@@ -43,3 +43,18 @@ after unloading each model: 0.01 GiB.
 
 Gemma 4 12B loaded as in the study (code at commit `6e9f497`), longest articles at each budget, 400
 new tokens forced, rising budgets, stop at first failure. `ladder.json` holds the full record.
+
+## `smoke_bf16_7500_2026-11-25/` — final step 6 smoke test: BF16, budget 7,500 (passed; not a result)
+
+5 dev items per model plus the worst-case prompt (7,491 characters of articles, about 1,950 tokens),
+condition A, prompt v0, code at commit `c7ab250`, Kaggle T4 x2, torch 2.11.0, transformers 5.24.1.
+All 24 prompt hashes and passage lists match a rebuild from the committed code and the local corpus.
+
+| Model | Finite | Valid | Peak GiB (GPU 0/1) | Mean s per prompt |
+|---|---|---|---|---|
+| AMALIA | yes | 6/6 | 10.63 / 10.65 | 13.6 |
+| EuroLLM | yes | 6/6 | 10.64 / 10.64 | 23.3 |
+| Gemma 4 12B | yes | 6/6 | 14.07 / 11.46 | 18.8 |
+| Qwen3.5-9B | yes | 6/6 | 10.64 / 9.79 | 13.0 |
+
+No answer has been scored. These runs show that the setup works, nothing about quality.

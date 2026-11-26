@@ -127,3 +127,6 @@ all records were corrected before any further commit.
   - **Budget decision (2026-11-25, the author's):** 7,500 characters for all four models, recorded in
     `docs/FREEZE.md`, entry 2.
 
+- **Confirmed (2026-11-26):** the final smoke test passed for all four models in BF16 at a
+  7,500-character budget (`runs/smoke_bf16_7500_2026-11-25/`; see `docs/FREEZE.md`, entry 3, including
+  the residual memory risk for Gemma).
